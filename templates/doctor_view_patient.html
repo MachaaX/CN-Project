@@ -15,9 +15,10 @@
             <li>
                 <strong>Date & Time:</strong> {{ data.created_at.strftime('%Y-%m-%d %H:%M:%S') }}<br>
                 <strong>Symptoms:</strong> {{ data.symptoms }}<br>
-                {% if data.file_path %}
+                {% if data.file_data %}
                     <strong>File:</strong> 
-                    <a href="{{ url_for('uploaded_file', filename=data.file_path) }}">Download</a>
+                    <!-- Use the record_id to link to the uploaded_file route -->
+                    <a href="{{ url_for('uploaded_file', record_id=data.id) }}">Download</a>
                 {% else %}
                     <strong>File:</strong> No file uploaded
                 {% endif %}

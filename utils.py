@@ -1,3 +1,4 @@
+# utils.py
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 import os
@@ -17,13 +18,18 @@ except ValueError as e:
     raise Exception(f"Invalid encryption key: {e}")
 
 def encrypt_data(plaintext):
+    """Encrypt text or binary data."""
+    # If plaintext is binary data (like file), no need to encode, just ensure it's in bytes
+    if isinstance(plaintext, str):
+        plaintext = plaintext.encode('utf-8')
+    
     iv = os.urandom(16)  # Initialization vector
     cipher = Cipher(algorithms.AES(encryption_key), modes.CBC(iv))
     encryptor = cipher.encryptor()
 
-    # Pad plaintext to match block size
+    # Pad plaintext to match block size for AES (block size is 16 bytes)
     padder = padding.PKCS7(128).padder()
-    padded_data = padder.update(plaintext.encode('utf-8')) + padder.finalize()
+    padded_data = padder.update(plaintext) + padder.finalize()
 
     # Encrypt the padded data
     ciphertext = encryptor.update(padded_data) + encryptor.finalize()
@@ -33,6 +39,7 @@ def encrypt_data(plaintext):
 
 
 def decrypt_data(ciphertext):
+    """Decrypt text or binary data."""
     iv = ciphertext[:16]  # Extract the IV
     actual_ciphertext = ciphertext[16:]  # Extract the encrypted data
     cipher = Cipher(algorithms.AES(encryption_key), modes.CBC(iv))
@@ -43,22 +50,8 @@ def decrypt_data(ciphertext):
     unpadder = padding.PKCS7(128).unpadder()
     plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
 
-    return plaintext.decode('utf-8')  # Return as a string
-
-
-
-# if __name__ == "__main__":
-#     test_plaintext = "Sensitive Patient Data"
-
-#     # Encrypt the plaintext
-#     encrypted_data = encrypt_data(test_plaintext)
-#     print(f"Encrypted Data: {encrypted_data}")
-
-#     # Decrypt the ciphertext
-#     decrypted_data = decrypt_data(encrypted_data)
-#     print(f"Decrypted Data: {decrypted_data}")
-
-#     # Ensure the original plaintext matches the decrypted data
-#     assert test_plaintext == decrypted_data, "Decryption failed: Original and decrypted data do not match."
-#     print("Encryption and decryption test passed successfully!")
-
+    # Return the decrypted plaintext as a string or binary data
+    try:
+        return plaintext.decode('utf-8')  # Try to decode as UTF-8 if it's a string
+    except UnicodeDecodeError:
+        return plaintext  # If it's not a string, return as bytes (e.g., file data)

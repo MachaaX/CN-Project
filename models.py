@@ -35,14 +35,18 @@ class Patient(db.Model):
 
 class HealthData(db.Model):
     __tablename__ = 'health_data'
+
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patients.user_id', ondelete='CASCADE'), nullable=False)
-    file_path = db.Column(db.String(255))
-    symptoms = db.Column(db.Text)
+    file_data = db.Column(db.LargeBinary, nullable=True)  # Store encrypted file data as binary
+    filename = db.Column(db.String(255))
+    symptoms = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f'<HealthData {self.id} for Patient {self.patient_id}>'
+
 
 class Comment(db.Model):
     __tablename__ = 'comments'

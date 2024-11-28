@@ -1,6 +1,6 @@
 # routes.py
 from app import app, db, bcrypt
-from flask import render_template, redirect, url_for, flash, request, abort, send_from_directory
+from flask import render_template, redirect, url_for, flash, request, abort, send_file
 from forms import RegistrationForm, LoginForm, PatientProfileForm, HealthDataForm, CommentForm, PrescriptionForm, SearchForm
 from models import User, Patient, HealthData, Comment, Prescription
 from flask_login import login_user, logout_user, login_required, current_user
@@ -8,11 +8,11 @@ from decorators import role_required
 from utils import encrypt_data, decrypt_data
 from werkzeug.utils import secure_filename
 import os
+from io import BytesIO
 
 def allowed_file(filename):
     allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg'}
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in allowed_extensions
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 @app.route('/')
 def index():
@@ -140,17 +140,13 @@ def modify_health_data(record_id):
 @role_required('patient')
 def delete_health_file(record_id):
     record = HealthData.query.filter_by(id=record_id, patient_id=current_user.id).first()
-    if not record or not record.file_path:
+    if not record or not record.file_data:
         flash('No file to delete.', 'danger')
         return redirect(url_for('patient_view_health_data'))
 
-    # Delete the file from the filesystem
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], record.file_path)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-    # Remove the file path from the database record
-    record.file_path = None
+    # Remove the file data and filename from the database
+    record.file_data = None
+    record.filename = None  # Remove the filename as well
     db.session.commit()
 
     flash('File deleted successfully.', 'success')
@@ -166,14 +162,18 @@ def update_health_file(record_id):
 
     file = request.files.get('new_file')
     if file and allowed_file(file.filename):
-        # Save the new file
-        filename = secure_filename(file.filename)
-        unique_filename = f"{current_user.id}_{filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(filepath)
+        # Read the new file as bytes
+        file_data = file.read()
 
-        # Update the database record
-        record.file_path = unique_filename
+        # Encrypt the file data
+        encrypted_file_data = encrypt_data(file_data)
+
+        # Save the new filename
+        filename = secure_filename(file.filename)
+
+        # Update the database record with the encrypted file data and filename
+        record.file_data = encrypted_file_data
+        record.filename = filename
         db.session.commit()
 
         flash('File updated successfully.', 'success')
@@ -190,23 +190,31 @@ def submit_health_data():
     if form.validate_on_submit():
         file = form.file.data
         symptoms = form.symptoms.data
+        
         if file and allowed_file(file.filename):
+            # Read the file as bytes
+            file_data = file.read()
+
+            # Encrypt the file data before saving to the database
+            encrypted_file_data = encrypt_data(file_data)
+
+            # Save the filename (use the original filename or create a custom one)
             filename = secure_filename(file.filename)
-            unique_filename = f"{current_user.id}_{filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-            file.save(filepath)
-            # Save to database
+
+            # Store the encrypted file data and the filename in the database
             health_data = HealthData(
                 patient_id=current_user.id,
-                file_path=unique_filename,
+                file_data=encrypted_file_data,  # Store encrypted data directly in the database
+                filename=filename,  # Store the filename
                 symptoms=symptoms
             )
             db.session.add(health_data)
             db.session.commit()
-            flash('Health data submitted successfully.', 'success')
+            flash('Health data submitted successfully with file.', 'success')
             return redirect(url_for('patient_dashboard'))
         else:
-            flash('Invalid file type.', 'danger')
+            flash('Invalid file type or no file uploaded.', 'danger')
+    
     return render_template('submit_health_data.html', form=form)
 
 @app.route('/patient/prescriptions')
@@ -223,17 +231,17 @@ def view_nurse_comments():
     comments = Comment.query.filter_by(patient_id=current_user.id, role='nurse').all()
     return render_template('patient_nurse_comments.html', comments=comments)
 
-@app.route('/uploads/<filename>')
+@app.route('/uploads/<int:record_id>')
 @login_required
-def uploaded_file(filename):
-    # Check if the current user is allowed to access the file
-    health_data = HealthData.query.filter_by(file_path=filename).first()
-    
-    # Ensure the file exists in the database
-    if not health_data:
+def uploaded_file(record_id):
+    # Fetch the health data record
+    health_data = HealthData.query.get(record_id)
+
+    # Ensure the record exists and the file data is present
+    if not health_data or not health_data.file_data:
         abort(404)
 
-    # Check if the user is authorized
+    # Check if the current user is authorized to view the file
     if current_user.role_name == 'patient' and health_data.patient_id == current_user.id:
         pass  # Patient can access their own files
     elif current_user.role_name == 'doctor':
@@ -242,8 +250,17 @@ def uploaded_file(filename):
         # If the user is not authorized (e.g., nurse or other roles)
         abort(403)
 
+    # Decrypt the file data
+    decrypted_file_data = decrypt_data(health_data.file_data)
+
+    # Create a file-like object from the decrypted data
+    file_stream = BytesIO(decrypted_file_data)
+
+    # Use the stored filename for the download
+    filename = health_data.filename
+
     # Return the file for download
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return send_file(file_stream, download_name=filename, as_attachment=True)
 
 # Doctor Routes
 @app.route('/doctor_dashboard')

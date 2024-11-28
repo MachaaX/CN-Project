@@ -1,3 +1,4 @@
+<!-- templates/patient_view_health_data.html -->
 {% extends 'base.html' %}
 {% block title %}View/Modify Health Data{% endblock %}
 {% block content %}
@@ -9,9 +10,10 @@
             <li>
                 <strong>Date & Time:</strong> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}<br>
                 <strong>Symptoms:</strong> {{ record.symptoms }}<br>
-                {% if record.file_path %}
+                {% if record.file_data %}
                     <strong>File:</strong> 
-                    <a href="{{ url_for('uploaded_file', filename=record.file_path) }}">Download</a>
+                    <!-- Use the record_id to link to the uploaded_file route -->
+                    <a href="{{ url_for('uploaded_file', record_id=record.id) }}">Download</a>
                     <form method="POST" action="{{ url_for('delete_health_file', record_id=record.id) }}" style="display:inline;">
                         <button type="submit" class="btn btn-danger btn-sm">Delete File</button>
                     </form>

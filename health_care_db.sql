@@ -30,13 +30,15 @@ CREATE TABLE patients (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Create health_data table
+-- Create health_data table with encrypted file data and filename
 CREATE TABLE health_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    patient_id INT,
-    file_path VARCHAR(255),
-    symptoms TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    patient_id INT NOT NULL,
+    symptoms TEXT NOT NULL,
+    file_data LONGBLOB,  -- Store encrypted file data as binary
+    filename VARCHAR(255),  -- Store the filename of the health data
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE
 );
 
