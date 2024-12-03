@@ -37,4 +37,5 @@ from routes import *  # Import routes at the end to avoid circular imports
 if __name__ == '__main__':
     # For local development with HTTPS (optional)
     # app.run(ssl_context=('cert.pem', 'key.pem'))
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+    # app.run(debug=True)
