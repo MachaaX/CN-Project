@@ -10,6 +10,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role_name = db.Column(db.Enum('patient', 'nurse', 'doctor'), nullable=False)
+    encrypted_aes_key = db.Column(db.LargeBinary, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     patient = db.relationship('Patient', backref='user', uselist=False)

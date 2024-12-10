@@ -16,13 +16,14 @@ CREATE TABLE users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role_name ENUM('patient', 'nurse', 'doctor') NOT NULL,
+    encrypted_aes_key LONGBLOB,  -- Encrypted AES key
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create patients table
 CREATE TABLE patients (
     user_id INT PRIMARY KEY,
-    address VARBINARY(255),  -- Encrypted address
+    address LONGBLOB,  -- Encrypted address
     age INT,
     height DECIMAL(5,2),
     weight DECIMAL(5,2),
@@ -30,11 +31,11 @@ CREATE TABLE patients (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Create health_data table with encrypted file data and filename
+-- Create health_data table with encrypted file data and symptoms
 CREATE TABLE health_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
-    symptoms TEXT NOT NULL,
+    symptoms LONGBLOB NOT NULL,  -- Encrypted symptoms
     file_data LONGBLOB,  -- Store encrypted file data as binary
     filename VARCHAR(255),  -- Store the filename of the health data
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -47,7 +48,7 @@ CREATE TABLE comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT,
     author_id INT,
-    comment TEXT,
+    comment LONGBLOB,  -- Encrypted comment
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     role ENUM('doctor', 'nurse') NOT NULL,
     FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE,
@@ -59,7 +60,7 @@ CREATE TABLE prescriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT,
     doctor_id INT,
-    prescription TEXT,
+    prescription LONGBLOB,  -- Encrypted prescription
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients(user_id) ON DELETE CASCADE,
     FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE

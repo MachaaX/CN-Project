@@ -34,6 +34,9 @@ if not app.debug:
 
 from routes import *  # Import routes at the end to avoid circular imports
 
+from key_management import load_or_generate_keys
+load_or_generate_keys()
+
 if __name__ == '__main__':
     # For local development with HTTPS (optional)
     # app.run(ssl_context=('cert.pem', 'key.pem'))
